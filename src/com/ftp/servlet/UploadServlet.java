@@ -69,17 +69,6 @@ public class UploadServlet extends HttpServlet {
         }
     }
 
-//    public static String chineseToUnicode(String str){
-//        char[]arChar=str.toCharArray();
-//        int iValue=0;
-//        StringBuffer uStr = new StringBuffer();
-//        for(int i=0;i<arChar.length;i++){
-//            iValue=(int)str.charAt(i);
-//            uStr.append("&#"+iValue+";");
-//        }
-//        return uStr.toString();
-//    }
-
     /**
      * 汉字 转换为对应的 UTF-8编码
      * @param s 木
@@ -151,7 +140,6 @@ public class UploadServlet extends HttpServlet {
                 passwd = hasher.trans(passwd);
                 System.out.println("After hash passwd: "+passwd);
 
-
                 Init_mysql e1 = new Init_mysql(1);
                 Init_mysql e2 = new Init_mysql(0);
 
@@ -169,10 +157,9 @@ public class UploadServlet extends HttpServlet {
                     return ;
                 }
 
-
                 cypher = "insert into auth_user (username,password,is_superuser,first_name,last_name,email,is_staff,is_active,date_joined)" +
                         " values('" + username + "','" + passwd + "',0,'Android','','" + mail + "',0,1,'" + now_time + "');";
-                
+
                 e1.add(cypher); //插入到auth_user
 
                 cypher = "select id from auth_user where username = '" + username + "';";
@@ -207,7 +194,7 @@ public class UploadServlet extends HttpServlet {
         }
 
         login_t = request.getParameter("login");
-        if (login_t!=null && login_t.equals("1")) { //Register
+        if (login_t!=null && login_t.equals("1")) { //Login
             try {
                 username = request.getParameter("studentNo"); //其实就是用户名, 最一开始是限制只能是数字的学号,后来为了一致改成了用户名
                 password_fill = request.getParameter("password_fill");
@@ -252,19 +239,103 @@ public class UploadServlet extends HttpServlet {
             return ;
         }
 
-        System.out.println("Before CourseActivity");
-        if (request.getParameter("CourseActivity") != null) {
+
+        if (request.getParameter("getUserInfo")!=null && request.getParameter("getUserInfo").equals("1")) { //getUserInfo
+            System.out.println("*********GETUSER");
+            try {
+                username = request.getParameter("username"); //用户名
+
+                Init_mysql e2 = new Init_mysql(0);
+                cypher = "select * from auth_user where username = '" +
+                        username + "';";
+                //由于auth_user表里面name是unique, 我们需要根据name求出这个用户的id信息.
+                ans = e2.executeCypher(cypher, 1);
+
+                String res = "NotExist";
+
+                if (ans.size()==0){
+                    JSONObject jo = new JSONObject();
+                    jo.put("result" , res);
+                    JSONArray ja = new JSONArray();
+                    ja.add(jo);//ja = object.put("resourceName","Chinese");
+                    out.println(ja.toString());
+                    out.flush();
+                    out.close();
+                    return ;
+                }
+
+                String user_email, user_date_joined, user_intro = "", user_nickname = "", user_last_login = "", user_last_name = "", user_first_name = "";
+                int user_gender, user_college_id = 0;
+
+                user_email = ans.getJSONObject(0).getString("email");
+                user_date_joined = ans.getJSONObject(0).getString("date_joined");
+//                user_last_login = ans.getJSONObject(0).getString("last_login");
+                id = ans.getJSONObject(0).getInt("id");
+
+
+                cypher = "select * from backend_userprofile where user_id = "
+                        + id + ";";
+
+                //由于auth_user表里面name是unique, 我们需要根据name求出这个用户的id信息.
+                ans = e2.executeCypher(cypher, 1);
+
+                if (ans.size()==0){
+                    JSONObject jo = new JSONObject();
+                    jo.put("result" , res);
+                    JSONArray ja = new JSONArray();
+                    ja.add(jo);//ja = object.put("resourceName","Chinese");
+                    out.println(ja.toString());
+                    out.flush();
+                    out.close();
+                    return ;
+                }
+
+                if (ans.getJSONObject(0).has("intro"))
+                    user_intro = ans.getJSONObject(0).getString("intro");
+                if (ans.getJSONObject(0).has("nickname"))
+                    user_nickname =  ans.getJSONObject(0).getString("nickname");
+                user_gender =  ans.getJSONObject(0).getInt("gender");
+                if (ans.getJSONObject(0).has("college_id"))
+                    user_college_id = ans.getJSONObject(0).getInt("college_id") ;
+                if (ans.getJSONObject(0).has("first_name"))
+                    user_first_name = ans.getJSONObject(0).getString("first_name");
+                if (ans.getJSONObject(0).has("last_name"))
+                    user_last_name = ans.getJSONObject(0).getString("last_name");
+
+                e2.close();
+
+                JSONObject jo = new JSONObject();
+                jo.put("result", "success");
+                jo.put("user_email", user_email);
+                jo.put("user_date_joined" , user_date_joined);
+                jo.put("user_intro", user_intro);
+                jo.put("user_nickname", user_nickname);
+                jo.put("user_gender", user_gender);
+                jo.put("user_colege_id", user_college_id);
+//                jo.put("user_last_login", user_last_login);
+                jo.put("user_last_name", user_last_name);
+                jo.put("user_first_name", user_first_name);
+
+                JSONArray ja = new JSONArray();
+                ja.add(jo);//ja = object.put("resourceName","Chinese");
+                System.out.println("@@@@@@@"+jo.toString());
+                out.println(ja.toString());
+                out.flush();
+                out.close();
+            }
+            catch (Exception e){ e.printStackTrace(); }
+            return ;
+        }
+
+        if (request.getParameter("CourseActivity") != null) { //courseCode->resource
             courseCode = request.getParameter("CourseActivity");
 
             System.out.println(")))((((CourseA");
             JSONArray jsonArray = new JSONArray();
 
             try {
-
                 Init_mysql e2 = new Init_mysql(0);
-
                 Init_mysql e3 = new Init_mysql(0);
-
                 Init_mysql e4 = new Init_mysql(0); //evaluitions
 
                 cypher = "select * from backend_resource where course_code='"
@@ -281,7 +352,6 @@ public class UploadServlet extends HttpServlet {
                 for (int i = 0; i < (int)ans.size(); ++i) //
                 {
                     resource_id = ans.getJSONObject(i).getInt("id");
-
                     user_id = ans.getJSONObject(i).getInt("upload_user_id");
                     download_count = ans.getJSONObject(i).getInt("download_count");
                     only_url = ans.getJSONObject(i).getInt("only_url"); //only_url为0代表是用户上传的资源,此时的资源的url为空,存放在服务器的相对路径在link字段里
@@ -293,7 +363,6 @@ public class UploadServlet extends HttpServlet {
                     resource_name = ans.getJSONObject(i).getString("name");
                     intro = ans.getJSONObject(i).getString("intro");
 
-
                     if (intro == null || intro.equals(""))
                         intro = notExist;
 
@@ -301,11 +370,8 @@ public class UploadServlet extends HttpServlet {
                     intro = convertStringToUTF8(intro);
                     System.out.println("url转化中文后"+intro);
 
-
                     String[] suffix_resource_name = resource_name.split("\\.");
                     String suffix = "";
-
-
 
                     if (suffix_resource_name.length >= 2) //代表有后缀名
                         suffix = suffix_resource_name[suffix_resource_name.length-1]; //找到最后一个,也就是后缀名
@@ -327,22 +393,14 @@ public class UploadServlet extends HttpServlet {
                         System.out.println("新的url"+url);
                     }
 
-
                     cypher = "select username from auth_user where id = " +
                             user_id + ";";
 
-                    System.out.println("****cypher = "+cypher);
-
                     ans2 = e3.executeCypher(cypher, 1);
                     username = ans2.getJSONObject(0).getString("username");
-
                     username = convertStringToUTF8(username);
 
-                    System.out.println("Username upload is: "+username);
-
                     String cypher_eva = "select * from backend_resource_evaluation where resource_id = " +resource_id +";";
-
-                    System.out.println("Evalution: "+cypher_eva);
 
                     ans4 = e4.executeCypher(cypher_eva, 100000);
 
@@ -363,11 +421,9 @@ public class UploadServlet extends HttpServlet {
                     jo.put("username" , username);
                     jo.put("downloadCount", download_count);
                     jo.put("resourceType", suffix);
-
                     jo.put("intro", intro);
                     jo.put("resourceName", resource_name);
                     jo.put("url", url);
-
                     jo.put("evaluation", evaluaiton);
 
                     System.out.println("!!!jsonarray = "+jo.toString());
@@ -379,14 +435,6 @@ public class UploadServlet extends HttpServlet {
                 e2.close();
 
             } catch (Exception e){ e.printStackTrace(); }
-
-
-//            for (int i=0;i<10;i++) {
-//                JSONObject object = new JSONObject();
-//                object.put("resourceName","Chinese");
-//                object.put("resourceType",types[new Random().nextInt(types.length)]);
-//                jsonArray.add(object);
-//            }
 
             out.println(jsonArray.toString());
             //out.println(jsonArray.toJSONString());
@@ -403,9 +451,7 @@ public class UploadServlet extends HttpServlet {
 
             try {
                 Init_mysql e2 = new Init_mysql(0);
-
                 Init_mysql e3 = new Init_mysql(0);
-
                 Init_mysql e4 = new Init_mysql(0);
 
                 cypher = "select id,download_count,upload_user_id,name,only_url,url,link,intro from backend_resource order by download_count desc limit 20;";
@@ -433,7 +479,6 @@ public class UploadServlet extends HttpServlet {
                     only_url = ans.getJSONObject(i).getInt("only_url"); //only_url为0代表是用户上传的资源,此时的资源的url为空,存放在服务器的相对路径在link字段里
                     resource_name = ans.getJSONObject(i).getString("name");
                     intro = ans.getJSONObject(i).getString("intro");
-
 
                     if (intro == null || intro.equals("")) {
                         System.out.println("!!!!!!!!!!!!!!!!!"+intro);
@@ -470,16 +515,9 @@ public class UploadServlet extends HttpServlet {
 
                     cypher = "select username from auth_user where id = " +
                             user_id + ";";
-
-//                    System.out.println("****cypher = "+cypher);
-
                     ans2 = e3.executeCypher(cypher, 1);
                     username = ans2.getJSONObject(0).getString("username");
-
                     username = convertStringToUTF8(username);
-
-//                    System.out.println("Username upload is: "+username);
-
                     String cypher_eva = "select * from backend_resource_evaluation where resource_id = " +resource_id +";";
 
                     System.out.println("Evalution: "+cypher_eva);
@@ -502,11 +540,9 @@ public class UploadServlet extends HttpServlet {
                     jo.put("username" , username);
                     jo.put("downloadCount", download_count);
                     jo.put("resourceType", suffix);
-
                     jo.put("intro", intro);
                     jo.put("resourceName", resource_name);
                     jo.put("url", url);
-
                     jo.put("evaluation", evaluaiton);
 
                     System.out.println("!!!jsonarray = "+jo.toString());
@@ -518,14 +554,6 @@ public class UploadServlet extends HttpServlet {
                 e2.close();
 
             } catch (Exception e){ e.printStackTrace(); }
-
-
-//            for (int i=0;i<10;i++) {
-//                JSONObject object = new JSONObject();
-//                object.put("resourceName","Chinese");
-//                object.put("resourceType",types[new Random().nextInt(types.length)]);
-//                jsonArray.add(object);
-//            }
 
             out.println(jsonArray.toString());
             //out.println(jsonArray.toJSONString());
@@ -569,5 +597,4 @@ public class UploadServlet extends HttpServlet {
             }
         }
     }
-
 }
