@@ -23,6 +23,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+
 /**
  * Servlet implementation class UploadServlet
  */
@@ -120,8 +121,9 @@ public class UploadServlet extends HttpServlet {
         Init_mysql con;
         String cypher, columnName, name, passwd, courseCode, gen, gender, mail, username, register_t, login_t,
                 password_fill, url, link, resource_name, intro, fileRoute;
-        JSONArray ans0, ans, ans2;
-        int user_id =0, cnt, id, contribution, only_url, download_count;
+        JSONArray ans0, ans, ans2, ans4;
+        int user_id =0, cnt, id, contribution, only_url, download_count, resource_id;
+        double evaluaiton;
 
         register_t = request.getParameter("registration");
 
@@ -149,12 +151,28 @@ public class UploadServlet extends HttpServlet {
                 passwd = hasher.trans(passwd);
                 System.out.println("After hash passwd: "+passwd);
 
-                cypher = "insert into auth_user (username,password,is_superuser,first_name,last_name,email,is_staff,is_active,date_joined)" +
-                        " values('" + username + "','" + passwd + "',0,'Android','','" + mail + "',0,1,'" + now_time + "');";
 
                 Init_mysql e1 = new Init_mysql(1);
                 Init_mysql e2 = new Init_mysql(0);
 
+                cypher = "select * from  auth_user where username='" + username + "';";
+
+                ans = e2.executeCypher(cypher, 1);
+
+                if (ans.size() > 0) {
+                    System.out.println("!!!SAME!!!"+username);
+                    JSONObject jo2 = new JSONObject();
+                    jo2.put("status" , "same");
+                    out.println(jo2.toString());
+                    out.flush();
+                    out.close();
+                    return ;
+                }
+
+
+                cypher = "insert into auth_user (username,password,is_superuser,first_name,last_name,email,is_staff,is_active,date_joined)" +
+                        " values('" + username + "','" + passwd + "',0,'Android','','" + mail + "',0,1,'" + now_time + "');";
+                
                 e1.add(cypher); //插入到auth_user
 
                 cypher = "select id from auth_user where username = '" + username + "';";
@@ -168,9 +186,20 @@ public class UploadServlet extends HttpServlet {
 
                 e1.add(cypher);
 
+                JSONObject jo = new JSONObject();
+                jo.put("status" , "success");
+                out.println(jo.toString());
+                out.flush();
+                out.close();
+
                 e2.close();
                 e1.close_update();
             }catch (Exception e){
+                JSONObject jo = new JSONObject();
+                jo.put("status" , "fail");
+                out.println(jo.toString());
+                out.flush();
+                out.close();
                 e.printStackTrace();
             }
             System.out.println("Regster Done!!!");
@@ -236,6 +265,7 @@ public class UploadServlet extends HttpServlet {
 
                 Init_mysql e3 = new Init_mysql(0);
 
+                Init_mysql e4 = new Init_mysql(0); //evaluitions
 
                 cypher = "select * from backend_resource where course_code='"
                             + courseCode + "';";
@@ -250,6 +280,8 @@ public class UploadServlet extends HttpServlet {
 
                 for (int i = 0; i < (int)ans.size(); ++i) //
                 {
+                    resource_id = ans.getJSONObject(i).getInt("id");
+
                     user_id = ans.getJSONObject(i).getInt("upload_user_id");
                     download_count = ans.getJSONObject(i).getInt("download_count");
                     only_url = ans.getJSONObject(i).getInt("only_url"); //only_url为0代表是用户上传的资源,此时的资源的url为空,存放在服务器的相对路径在link字段里
@@ -308,6 +340,25 @@ public class UploadServlet extends HttpServlet {
 
                     System.out.println("Username upload is: "+username);
 
+                    String cypher_eva = "select * from backend_resource_evaluation where resource_id = " +resource_id +";";
+
+                    System.out.println("Evalution: "+cypher_eva);
+
+                    ans4 = e4.executeCypher(cypher_eva, 100000);
+
+                    evaluaiton = -1.0;
+                    if (ans4.size() != 0){
+                        int siz_eva = ans4.size();
+                        int tot_eva = 0;
+                        for (int i_eva = 0; i_eva < siz_eva; ++i_eva){
+                            tot_eva += ans4.getJSONObject(i_eva).getInt("grade");
+                        }
+                        evaluaiton = (double)tot_eva / (double)siz_eva;
+                    }
+
+                    System.out.println("&&&EVA==="+evaluaiton+" ans4.size()"+ ans4.size());
+
+
                     JSONObject jo = new JSONObject();
                     jo.put("username" , username);
                     jo.put("downloadCount", download_count);
@@ -316,6 +367,8 @@ public class UploadServlet extends HttpServlet {
                     jo.put("intro", intro);
                     jo.put("resourceName", resource_name);
                     jo.put("url", url);
+
+                    jo.put("evaluation", evaluaiton);
 
                     System.out.println("!!!jsonarray = "+jo.toString());
 
@@ -353,7 +406,9 @@ public class UploadServlet extends HttpServlet {
 
                 Init_mysql e3 = new Init_mysql(0);
 
-                cypher = "select download_count,upload_user_id,name,only_url,url,link,intro from backend_resource order by download_count desc limit 20;";
+                Init_mysql e4 = new Init_mysql(0);
+
+                cypher = "select id,download_count,upload_user_id,name,only_url,url,link,intro from backend_resource order by download_count desc limit 20;";
                 //找到下载量最高的20个资源
 
                 ans = e2.executeCypher(cypher, 20); // 20 most download
@@ -369,6 +424,8 @@ public class UploadServlet extends HttpServlet {
 
                 for (int i = 0; i < (int)ans.size(); ++i) //ans.size()应该就是20,即返回20个资源
                 {
+                    resource_id = ans.getJSONObject(i).getInt("id");
+
                     user_id = ans.getJSONObject(i).getInt("upload_user_id");
                     download_count = ans.getJSONObject(i).getInt("download_count");
                     url = ans.getJSONObject(i).getString("url");
@@ -389,7 +446,7 @@ public class UploadServlet extends HttpServlet {
 
                     String[] suffix_resource_name = resource_name.split("\\.");
                     String suffix = "";
-                    
+
                     if (suffix_resource_name.length >= 2) //代表有后缀名
                         suffix = suffix_resource_name[suffix_resource_name.length-1]; //找到最后一个,也就是后缀名
 
@@ -423,6 +480,24 @@ public class UploadServlet extends HttpServlet {
 
 //                    System.out.println("Username upload is: "+username);
 
+                    String cypher_eva = "select * from backend_resource_evaluation where resource_id = " +resource_id +";";
+
+                    System.out.println("Evalution: "+cypher_eva);
+
+                    ans4 = e4.executeCypher(cypher_eva, 100000);
+
+                    evaluaiton = -1.0;
+                    if (ans4.size() != 0){
+                        int siz_eva = ans4.size();
+                        int tot_eva = 0;
+                        for (int i_eva = 0; i_eva < siz_eva; ++i_eva){
+                            tot_eva += ans4.getJSONObject(i_eva).getInt("grade");
+                        }
+                        evaluaiton = (double)tot_eva / (double)siz_eva;
+                    }
+
+                    System.out.println("&&&EVA==="+evaluaiton+" ans4.size()"+ ans4.size());
+
                     JSONObject jo = new JSONObject();
                     jo.put("username" , username);
                     jo.put("downloadCount", download_count);
@@ -431,6 +506,8 @@ public class UploadServlet extends HttpServlet {
                     jo.put("intro", intro);
                     jo.put("resourceName", resource_name);
                     jo.put("url", url);
+
+                    jo.put("evaluation", evaluaiton);
 
                     System.out.println("!!!jsonarray = "+jo.toString());
 
