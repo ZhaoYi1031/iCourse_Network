@@ -63,22 +63,18 @@ public class Init_mysql {
         try(Statement statement = this.con.createStatement() ){
             JSONArray array = new JSONArray();
 
-            //System.out.println(cypher);
             ResultSet rs = statement.executeQuery(cypher);
             ResultSetMetaData md = rs.getMetaData();
             int columnCount = md.getColumnCount();
             int count = 0;
 
-            //System.out.println(columnCount);
 
             while (rs.next()) {
                 JSONObject jsonObj = new JSONObject();
 
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName =md.getColumnLabel(i);
-                    //System.out.println("columnName "+columnName);
                     String value = rs.getString(columnName);
-                    //System.out.println("value "+value);
                     jsonObj.put(columnName, value);
                 }
                 count ++;
@@ -87,7 +83,6 @@ public class Init_mysql {
             }
             //不让它自己关闭掉，而是在调用的地方close
             //close();
-            //System.out.println(array);
             return array;
         }
     }

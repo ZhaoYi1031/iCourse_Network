@@ -1,5 +1,9 @@
 package com.ftp.servlet;
 
+//import net.sf.json.JSONArray;
+//import net.sf.json.JSONObject;
+
+
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.fileupload.FileItem;
@@ -15,9 +19,10 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLEncoder;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -39,10 +44,57 @@ public class UploadServlet extends HttpServlet {
         // TODO Auto-generated constructor stub
     }
 
+
+
+    /**
+     * 发送Post请求
+     */
+    public void sendPostRequest(String code) {
+
+        //Build parameter string
+        String data = "code="+code;
+        try {
+            // Send the request
+            URL url = new URL("https://tongpao.qinix.com/auths/get_data");
+            URLConnection conn = url.openConnection();
+
+            conn.setDoOutput(true);
+            OutputStreamWriter writer = new OutputStreamWriter(conn.getOutputStream());
+
+            //write parameters
+            writer.write(data);
+            writer.flush();
+
+            // Get the response
+            StringBuffer answer = new StringBuffer();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                answer.append(line);
+            }
+            writer.close();
+            reader.close();
+
+            //Output the response
+            System.out.println(answer.toString());
+        } catch (MalformedURLException ex) {
+            ex.printStackTrace();
+        } catch (IOException ex) {
+            ex.printStackTrace();
+        }
+    }
+
+
+
+
     /**
      * 下载文件
      */
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+        String tongpao_login, code, time, get_url;
+
+        get_url = request.getRequestURL().toString();
+        System.out.println("********"+get_url);
 
         request.setCharacterEncoding("GBK");
         String clientFile = request.getHeader("filename");
@@ -66,6 +118,21 @@ public class UploadServlet extends HttpServlet {
             }
             out.flush();
             out.close();
+        }
+
+        tongpao_login = request.getParameter("code");//getHeader("tongpao");
+        System.out.println("********"+tongpao_login);
+
+
+        if (tongpao_login != null){
+
+            code = request.getParameter("code");
+            time = request.getParameter("status");
+            System.out.println("$$$$$$$$$$$$$$$$$$$$$$$$$$$$"+code+"   "+time);
+
+            Post tp = new Post();
+            tp.work(code, time);
+
         }
     }
 
@@ -122,8 +189,8 @@ public class UploadServlet extends HttpServlet {
             gen = request.getParameter("studentGender");
             switch (gen)
             {
-                case "male": gender = "1"; break;
-                case "female": gender = "2"; break;
+                case "Male": gender = "1"; break;
+                case "Female": gender = "2"; break;
                 default: gender = "0";
             }
             mail = request.getParameter("studentMail");
@@ -193,6 +260,81 @@ public class UploadServlet extends HttpServlet {
             return ;
         }
 
+        String login_tp = request.getParameter("Time");
+        if (login_tp!=null) { //Login_tongpao
+            System.out.println("YYYYEAAAAHHHHH");
+            try {
+                System.out.println("BEFORE HIIIIII");
+                Post.outTime();
+                //Thread.sleep(1000);
+                System.out.println("AFTER HIIIIII");
+                Post.outTime();
+
+                cypher = "select * from auth_user where last_login = '" +
+                        login_tp + "';";
+                //由于auth_user表里面name是unique, 我们需要根据name求出这个用户的id信息.
+                Init_mysql e2 = new Init_mysql(0);
+                ans = e2.executeCypher(cypher, 1);
+                e2.close();
+
+                System.out.println(cypher);
+
+                String res = "fail";
+                if (ans.size() == 0){
+                    JSONObject jo = new JSONObject();
+                    jo.put("result" , res);
+                    JSONArray ja = new JSONArray();
+                    ja.add(jo);//ja = object.put("resourceName","Chinese");
+
+                    System.out.println("*************"+ja.toString());
+
+                    out.println(ja.toString());
+                    out.flush();
+                    out.close();
+
+                    return ;
+                }
+
+
+//                String code = request.getParameter("code");
+//                String res = "true";
+//
+//                Post p = new Post();
+//                username = p.Getusername(code);
+//                if (username == null || username.equals("")){
+//                    res = "fail";
+//                    JSONObject jo2 = new JSONObject();
+//                    jo2.put("result" , res);
+//                    JSONArray ja2 = new JSONArray();
+//                    ja2.add(jo2);//ja = object.put("resourceName","Chinese");
+//
+//                    System.out.println("%#^&@@@@@@@"+ja2.toString());
+//
+//                    out.println(ja2.toString());
+//                    out.flush();
+//                    out.close();
+//                    return ;
+//                }
+
+                JSONObject jo = new JSONObject();
+                res = "true";
+                jo.put("result" , res);
+                username = ans.getJSONObject(0).getString("username");
+                jo.put("username", username);//ans.getJSONObject(0).getString("username"));
+                JSONArray ja = new JSONArray();
+                ja.add(jo);//ja = object.put("resourceName","Chinese");
+
+                System.out.println("*************"+ja.toString());
+
+                out.println(ja.toString());
+                out.flush();
+                out.close();
+            }
+            catch (Exception e){ e.printStackTrace(); }
+            return ;
+        }
+
+
         login_t = request.getParameter("login");
         if (login_t!=null && login_t.equals("1")) { //Login
             try {
@@ -204,24 +346,21 @@ public class UploadServlet extends HttpServlet {
                 //由于auth_user表里面name是unique, 我们需要根据name求出这个用户的id信息.
                 ans = e2.executeCypher(cypher, 1);
 
-                String res = "NotExist";
+                String res = "User Not Exist";
                 if (ans.size() > 0){
                     passwd = ans.getJSONObject(0).getString("password");
+                    System.out.println("$$$$$$$$$$"+passwd);
                     if (passwd.length()>5 &&  passwd.substring(0,5).equals("pbkdf")){ //前面的字符代表是加密后的面膜
                         Hasher hasher = new Hasher();
                         if (hasher.checkPassword(password_fill, passwd)) {
                             res = "true";
                         } else {
-                            res = "false";
+                            res = "Wrong password";
                         }
                     }
                     else {
-                        System.out.println("password = " + passwd + "passwortd_t" + password_fill);
-                        if (passwd.equals(password_fill)) {
-                            res = "true";
-                        } else {
-                            res = "false";
-                        }
+                        System.out.println("!!!PASSWD<5"+passwd);
+                        res = "Wrong password";
                     }
                 }
 
@@ -231,6 +370,9 @@ public class UploadServlet extends HttpServlet {
                 jo.put("result" , res);
                 JSONArray ja = new JSONArray();
                 ja.add(jo);//ja = object.put("resourceName","Chinese");
+
+                System.out.println("*************"+ja.toString());
+
                 out.println(ja.toString());
                 out.flush();
                 out.close();
@@ -251,7 +393,7 @@ public class UploadServlet extends HttpServlet {
                 //由于auth_user表里面name是unique, 我们需要根据name求出这个用户的id信息.
                 ans = e2.executeCypher(cypher, 1);
 
-                String res = "NotExist";
+                String res = "User Not Exist";
 
                 if (ans.size()==0){
                     JSONObject jo = new JSONObject();
@@ -264,11 +406,13 @@ public class UploadServlet extends HttpServlet {
                     return ;
                 }
 
-                String user_email, user_date_joined, user_intro = "", user_nickname = "", user_last_login = "", user_last_name = "", user_first_name = "";
+                String user_email = "", user_date_joined = "", user_intro = "", user_nickname = "", user_last_login = "", user_last_name = "", user_first_name = "";
                 int user_gender, user_college_id = 0;
 
-                user_email = ans.getJSONObject(0).getString("email");
-                user_date_joined = ans.getJSONObject(0).getString("date_joined");
+                if (ans.getJSONObject(0).has("email"))
+                    user_email = ans.getJSONObject(0).getString("email");
+                if (ans.getJSONObject(0).has("date_joined"))
+                    user_date_joined = ans.getJSONObject(0).getString("date_joined");
 //                user_last_login = ans.getJSONObject(0).getString("last_login");
                 id = ans.getJSONObject(0).getInt("id");
 
@@ -278,7 +422,6 @@ public class UploadServlet extends HttpServlet {
 
                 //由于auth_user表里面name是unique, 我们需要根据name求出这个用户的id信息.
                 ans = e2.executeCypher(cypher, 1);
-
                 if (ans.size()==0){
                     JSONObject jo = new JSONObject();
                     jo.put("result" , res);
@@ -289,18 +432,27 @@ public class UploadServlet extends HttpServlet {
                     out.close();
                     return ;
                 }
-
-                if (ans.getJSONObject(0).has("intro"))
+                if (ans.getJSONObject(0).has("intro")) {
                     user_intro = ans.getJSONObject(0).getString("intro");
-                if (ans.getJSONObject(0).has("nickname"))
-                    user_nickname =  ans.getJSONObject(0).getString("nickname");
+                    System.out.println("***intro转化中文前"+user_intro);
+                    user_intro = convertStringToUTF8(user_intro);
+                    System.out.println("***intro转化中文后"+user_intro);
+                }
+                if (ans.getJSONObject(0).has("nickname")) {
+                    user_nickname = ans.getJSONObject(0).getString("nickname");
+                    user_nickname = convertStringToUTF8(user_nickname);
+                }
                 user_gender =  ans.getJSONObject(0).getInt("gender");
                 if (ans.getJSONObject(0).has("college_id"))
                     user_college_id = ans.getJSONObject(0).getInt("college_id") ;
-                if (ans.getJSONObject(0).has("first_name"))
+                if (ans.getJSONObject(0).has("first_name")) {
                     user_first_name = ans.getJSONObject(0).getString("first_name");
-                if (ans.getJSONObject(0).has("last_name"))
+                    user_first_name = convertStringToUTF8(user_first_name);
+                }
+                if (ans.getJSONObject(0).has("last_name")) {
                     user_last_name = ans.getJSONObject(0).getString("last_name");
+                    user_last_name = convertStringToUTF8(user_last_name);
+                }
 
                 e2.close();
 
@@ -327,6 +479,7 @@ public class UploadServlet extends HttpServlet {
             return ;
         }
 
+
         if (request.getParameter("CourseActivity") != null) { //courseCode->resource
             courseCode = request.getParameter("CourseActivity");
 
@@ -342,8 +495,6 @@ public class UploadServlet extends HttpServlet {
                             + courseCode + "';";
 
                 ans = e2.executeCypher(cypher, 10000); //一个资源最多10000个资源
-
-                System.out.println("$$$$$$ans.size() = " + ans.size());
 
                 byte[] notExist_b = "该资源尚无简介".getBytes();
                 String notExist = new String(notExist_b);
@@ -366,9 +517,8 @@ public class UploadServlet extends HttpServlet {
                     if (intro == null || intro.equals(""))
                         intro = notExist;
 
-                    System.out.println("url转化中文前"+intro);
                     intro = convertStringToUTF8(intro);
-                    System.out.println("url转化中文后"+intro);
+
 
                     String[] suffix_resource_name = resource_name.split("\\.");
                     String suffix = "";
@@ -376,21 +526,17 @@ public class UploadServlet extends HttpServlet {
                     if (suffix_resource_name.length >= 2) //代表有后缀名
                         suffix = suffix_resource_name[suffix_resource_name.length-1]; //找到最后一个,也就是后缀名
 
-                    System.out.println("suffix: "+suffix);
 
                     //System.out.println("resource_String转化中文前"+intro);
                     resource_name = convertStringToUTF8(resource_name);
                     //System.out.println("url转化中文后"+intro);
 
-                    System.out.println("user_id: "+user_id+"download_count :"+download_count+ "url: "+url);
 
                     if (only_url == 0) //如果是用户上传的资源,需要我们手动修改url的位置 link= uploads/2017/11/20171124121620_58.ppt
                     {
                         int upos = link.indexOf('/'); //找到第一个出现的/位置
                         String sonRoute = link.substring(upos+1, link.length());//   2017/11/20171124121620_58.ppt
-                        System.out.println(sonRoute);
                         url = "http://10.2.28.124:8080/dir/" + sonRoute;//http://10.2.28.124:8080/dir/2017/11/
-                        System.out.println("新的url"+url);
                     }
 
                     cypher = "select username from auth_user where id = " +
@@ -414,8 +560,6 @@ public class UploadServlet extends HttpServlet {
                         evaluaiton = (double)tot_eva / (double)siz_eva;
                     }
 
-                    System.out.println("&&&EVA==="+evaluaiton+" ans4.size()"+ ans4.size());
-
 
                     JSONObject jo = new JSONObject();
                     jo.put("username" , username);
@@ -425,8 +569,6 @@ public class UploadServlet extends HttpServlet {
                     jo.put("resourceName", resource_name);
                     jo.put("url", url);
                     jo.put("evaluation", evaluaiton);
-
-                    System.out.println("!!!jsonarray = "+jo.toString());
 
                     jsonArray.add(jo);
                 }
@@ -459,12 +601,6 @@ public class UploadServlet extends HttpServlet {
 
                 ans = e2.executeCypher(cypher, 20); // 20 most download
 
-                System.out.println("$$$$$$ans.size() = " + ans.size());
-
-//                byte[] notExist_b = "该资源尚无简介".getBytes();
-//                String notExist = new String(notExist_b, "utf-8");
-//                notExist = convertStringToUTF8(notExist);
-
                 String notExist = "\\u8be5\\u6587\\u4ef6\\u5c1a\\u65e0\\u7b80\\u4ecb";
                 //实在不知道上面那个哪边编码有问题了,索性直接自己占据主动权,先转换成utf-8?unicode?格式
 
@@ -481,12 +617,9 @@ public class UploadServlet extends HttpServlet {
                     intro = ans.getJSONObject(i).getString("intro");
 
                     if (intro == null || intro.equals("")) {
-                        System.out.println("!!!!!!!!!!!!!!!!!"+intro);
                         intro = notExist;
                     }else{
-                        System.out.println("#####"+intro);
                         intro = convertStringToUTF8(intro);
-                        System.out.println("&&&&&"+intro);
                     }
 
                     String[] suffix_resource_name = resource_name.split("\\.");
@@ -495,23 +628,14 @@ public class UploadServlet extends HttpServlet {
                     if (suffix_resource_name.length >= 2) //代表有后缀名
                         suffix = suffix_resource_name[suffix_resource_name.length-1]; //找到最后一个,也就是后缀名
 
-//                    System.out.println("suffix: "+suffix);
-
-                    //System.out.println("resource_String转化中文前"+intro);
                     resource_name = convertStringToUTF8(resource_name);
-                    //System.out.println("url转化中文后"+intro);
-
-//                    System.out.println("user_id: "+user_id+"download_count :"+download_count+ "url: "+url);
 
                     if (only_url == 0) //如果是用户上传的资源,需要我们手动修改url的位置 link= uploads/2017/11/20171124121620_58.ppt
                     {
                         int upos = link.indexOf('/'); //找到第一个出现的/位置
                         String sonRoute = link.substring(upos+1, link.length());//   2017/11/20171124121620_58.ppt
-                        System.out.println(sonRoute);
                         url = "http://10.2.28.124:8080/dir/" + sonRoute;//http://10.2.28.124:8080/dir/2017/11/
-                        System.out.println("新的url"+url);
                     }
-
 
                     cypher = "select username from auth_user where id = " +
                             user_id + ";";
@@ -519,8 +643,6 @@ public class UploadServlet extends HttpServlet {
                     username = ans2.getJSONObject(0).getString("username");
                     username = convertStringToUTF8(username);
                     String cypher_eva = "select * from backend_resource_evaluation where resource_id = " +resource_id +";";
-
-                    System.out.println("Evalution: "+cypher_eva);
 
                     ans4 = e4.executeCypher(cypher_eva, 100000);
 
@@ -534,8 +656,6 @@ public class UploadServlet extends HttpServlet {
                         evaluaiton = (double)tot_eva / (double)siz_eva;
                     }
 
-                    System.out.println("&&&EVA==="+evaluaiton+" ans4.size()"+ ans4.size());
-
                     JSONObject jo = new JSONObject();
                     jo.put("username" , username);
                     jo.put("downloadCount", download_count);
@@ -544,8 +664,6 @@ public class UploadServlet extends HttpServlet {
                     jo.put("resourceName", resource_name);
                     jo.put("url", url);
                     jo.put("evaluation", evaluaiton);
-
-                    System.out.println("!!!jsonarray = "+jo.toString());
 
                     jsonArray.add(jo);
                 }
