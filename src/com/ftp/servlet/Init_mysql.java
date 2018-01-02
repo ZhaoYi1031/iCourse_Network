@@ -15,7 +15,7 @@ public class Init_mysql {
     Statement st;
     String driver = "com.mysql.jdbc.Driver";
     String url = //"jdbc:mysql://127.0.0.1:3306/mysql";
-            "jdbc:mysql://10.2.28.124:3306/icourse";
+            "jdbc:mysql://10.2.28.124:3306/icourse?useSSL=false";
     //"jdbc:neo4j:http://39.106.60.94:3306/iCourse";
     String user = "root";
     String password = //"";

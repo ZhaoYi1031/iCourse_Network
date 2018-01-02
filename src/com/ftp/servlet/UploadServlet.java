@@ -644,6 +644,8 @@ public class UploadServlet extends HttpServlet {
                     username = convertStringToUTF8(username);
                     String cypher_eva = "select * from backend_resource_evaluation where resource_id = " +resource_id +";";
 
+                    System.out.println("@@"+cypher_eva);
+
                     ans4 = e4.executeCypher(cypher_eva, 100000);
 
                     evaluaiton = -1.0;
