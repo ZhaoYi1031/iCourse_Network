@@ -164,7 +164,16 @@ public class Post {
                 put("\\u65b0\\u5a92\\u4f53\\u827a\\u672f\\u4e0e\\u8bbe\\u8ba1\\u5b66\\u9662", 26);
                 put("\\u5316\\u5b66\\u4e0e\\u73af\\u5883\\u5b66\\u9662", 27);
                 put("\\u601d\\u60f3\\u653f\\u6cbb\\u7406\\u8bba\\u5b66\\u9662", 28);
-                put("\\u4eba\\u6587\\u4e0e\\u793e\\u4f1a\\u79d1\\u5b66\\u9ad8\\u7b49\\u7814\\u7a76", 29);
+                put("\\u4eba\\u6587\\u4e0e\\u793e\\u4f1a\\u79d1\\u5b66\\u9ad8\\u7b49\\u7814\\u7a76\\u9662", 29);
+                put("\\u7a7a\\u95f4\\u4e0e\\u73af\\u5883\\u5b66\\u9662", 30);
+                put("\\u58eb\\u5609\\u4e66\\u9662", 75);
+                put("\\u51af\\u5982\\u4e66\\u9662", 74);
+                put("\\u5317\\u822a\\u5b66\\u9662", 37);
+                put("\\u58eb\\u8c14\\u4e66\\u9662", 73);
+                put("\\u56fd\\u9645\\u901a\\u7528\\u5de5\\u7a0b\\u5b66\\u9662", 35);
+                put("\\u77e5\\u884c\\u4e66\\u9662", 79);
+                put("\\u81f4\\u771f\\u4e66\\u9662", 77);
+                put("\\u5b88\\u9537\\u4e66\\u9662", 76);
             }
         };
 
@@ -282,7 +291,10 @@ public class Post {
 
             if (data.get("college") != null)
                 college = (String)data.get("college");
-            college_id = (int)mp_college.get(UploadServlet.convertStringToUTF8(college));
+            if (mp_college.containsKey(UploadServlet.convertStringToUTF8(college)))
+                college_id = (int)mp_college.get(UploadServlet.convertStringToUTF8(college));
+            else
+                college_id = 0;
             System.out.println(college+"@@@@@!#"+college_id);
 
 
